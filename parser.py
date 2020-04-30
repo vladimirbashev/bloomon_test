@@ -20,9 +20,9 @@ class Flower:
 class Bouquet:
     def __init__(self, val):
         self.bouquet_design = val
-        bgroups = re.findall(BOUQUET_REGEX, val)
-        if bgroups:
-            self.name, self.size, flowers, self.total = bgroups[0]
+        groups = re.findall(BOUQUET_REGEX, val)
+        if groups:
+            self.name, self.size, flowers, self.total = groups[0]
             self.total = int(self.total)
             self.flowers = list(map(lambda f: Flower(*f, design=True, reserved=False),
                                     re.findall(FLOWER_REGEX, flowers)))
@@ -116,7 +116,11 @@ class Parser:
         self._fill_required_flowers()
 
     def save(self, file_name):
-        file = open(file_name, 'w')
+        try:
+            file = open(file_name, 'w')
+        except FileNotFoundError:
+            print(str.format('Cannot save file {}', file_name))
+            raise
         for bd in self.bouquet_designs:
             file.write(str(bd))
             file.write('\n')
@@ -133,21 +137,26 @@ def main(argv):
         sys.exit(2)
     for opt, arg in opts:
         if opt == '-h':
-            print('test.py -i <inputfile> -o <outputfile>')
+            print('parser.py -i <inputfile> -o <outputfile>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             input_file = arg
         elif opt in ("-o", "--ofile"):
             output_file = arg
 
-    print('Parser is run.')
-    p = Parser()
-    print(str.format('Parsing {}', input_file))
-    p.parse(input_file)
-    print('Construct bouquets')
-    p.construct()
-    print(str.format('Saving to {}', output_file))
-    p.save(output_file)
+    if not input_file:
+        print('Please specify input file name: -i <inputfile>.')
+    elif not output_file:
+        print('Please specify output file name: -0 <outputfile>.')
+    else:
+        print('Parser is run.')
+        p = Parser()
+        print(str.format('Parsing {}', input_file))
+        p.parse(input_file)
+        print('Construct bouquets')
+        p.construct()
+        print(str.format('Saving to {}', output_file))
+        p.save(output_file)
 
 
 if __name__ == "__main__":
