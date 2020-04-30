@@ -68,9 +68,7 @@ class Parser:
             raise
 
         while True:
-            # Get next line from file
             line = file.readline()
-            # If line is empty then end of file reached
             if not line:
                 break
             if line == "\n":
@@ -78,7 +76,6 @@ class Parser:
             else:
                 handler(line)
 
-        # Close Close
         file.close()
 
     def _find_specie(self, quantity, size):
