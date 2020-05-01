@@ -6,12 +6,13 @@ BOUQUET_REGEX = r'^([A-Z])([LS])(\w+[a-z])(\d+)$'
 FLOWER_REGEX = r'(\d+)([a-z])'
 
 
-class Flower:
+class BouquetFlower:
     def __init__(self, quantity, specie, design=False, reserved=True):
         self.quantity = int(quantity)
         self.specie = specie
         self.reserved = reserved
         self.design = design
+        self.weight = 0
 
     def __str__(self):
         return str.format('{}{}', self.quantity, self.specie)
@@ -25,7 +26,7 @@ class Bouquet:
         if groups:
             self.name, self.size, flowers, self.total = groups[0]
             self.total = int(self.total)
-            self.flowers = list(map(lambda f: Flower(*f, design=True, reserved=False),
+            self.flowers = list(map(lambda f: BouquetFlower(*f, design=True, reserved=False),
                                     re.findall(FLOWER_REGEX, flowers)))
             self.has_extra_flowers = self.total > sum(f.quantity for f in self.flowers)
 
@@ -46,7 +47,7 @@ class Bouquet:
         if fl:
             fl.quantity = fl.quantity + quantity
         else:
-            self.flowers.append(Flower(quantity, specie))
+            self.flowers.append(BouquetFlower(quantity, specie))
 
     def __str__(self):
         return str.format('{}{}{}',
@@ -59,6 +60,10 @@ class Parser:
     def __init__(self):
         self.flowers = dict()
         self.bouquets = list()
+        self.total_flowers = {
+                'L': 0,
+                'S': 0
+            }
 
     def parse(self, file_name):
         handler = self._parse_bouquet_design
@@ -101,6 +106,7 @@ class Parser:
                 'S': 0
             }
         self.flowers[line[0]][line[1]] += 1
+        self.total_flowers[line[1]] += 1
 
     def _find_specie(self, quantity, size):
         return next((k for k, v in self.flowers.items() if v[size] >= quantity), None)
@@ -112,8 +118,9 @@ class Parser:
             return 0
 
     def _add_extra_flower(self, bouquet, quantity, specie):
-        bouquet.add_extra_flower(quantity, specie)
-        self.flowers[specie][bouquet.size] = self.flowers[specie][bouquet.size] - quantity
+        if quantity <= self._get_flowers_quantity(specie, bouquet.size):
+            bouquet.add_extra_flower(quantity, specie)
+            self.flowers[specie][bouquet.size] = self.flowers[specie][bouquet.size] - quantity
 
     def _reserve_flower(self, flower, bouquet):
         if flower.reserved:
@@ -161,7 +168,29 @@ class Parser:
             if not b:
                 break
             else:
+                self._unreserve(b)
                 b.active = False
+
+    def _get_weight(self, total, quantity):
+        return 1-(total-quantity)/total
+
+    def sort(self):
+        for bd in self.bouquets:
+            if bd.total > self.total_flowers[bd.size]:
+                bd.active = False
+            else:
+                for f in bd.flowers:
+                    if f.quantity > self._get_flowers_quantity(f.specie, bd.size):
+                        bd.active = False
+                        break
+                    f.weight = self._get_weight(self._get_flowers_quantity(f.specie, bd.size), f.quantity)
+            if bd.active:
+                bd.weight = sum(f.weight for f in bd.flowers if f.design) + \
+                            self._get_weight(self.total_flowers[bd.size], bd.total)
+            else:
+                bd.weight = 0
+
+        self.bouquets.sort(key=lambda b: b.weight, reverse=True)
 
 
 def main(argv):
@@ -190,6 +219,8 @@ def main(argv):
         p = Parser()
         print(str.format('Parsing {}', input_file))
         p.parse(input_file)
+        print('Sort bouquets')
+        p.sort()
         print('Construct bouquets')
         p.construct()
         print(str.format('Saving to {}', output_file))
@@ -198,4 +229,3 @@ def main(argv):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
