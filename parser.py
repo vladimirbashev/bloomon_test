@@ -19,6 +19,7 @@ class Flower:
 
 class Bouquet:
     def __init__(self, val):
+        self.active = True
         self.bouquet_design = val
         groups = re.findall(BOUQUET_REGEX, val)
         if groups:
@@ -58,10 +59,6 @@ class Parser:
     def __init__(self):
         self.flowers = dict()
         self.bouquets = list()
-
-    def construct(self):
-        self._fill_required_flowers()
-        self._fill_extra_flowers()
 
     def parse(self, file_name):
         handler = self._parse_bouquet_design
@@ -133,10 +130,12 @@ class Parser:
             if fl.reserved:
                 fl.reserved = False
                 self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
-            bouquet.flowers = [fl for fl in bouquet.flowers if not fl.reserved and not fl.design]
+        bouquet.flowers = [fl for fl in bouquet.flowers if fl.reserved or fl.design]
 
     def _fill_required_flowers(self):
         for bd in self.bouquets:
+            if not bd.active:
+                continue
             for fl in bd.flowers:
                 if not self._reserve_flower(fl, bd):
                     self._unreserve(bd)
@@ -153,6 +152,16 @@ class Parser:
                     self._add_extra_flower(bd, quantity, specie)
                 else:
                     self._unreserve(bd)
+
+    def construct(self):
+        while True:
+            self._fill_required_flowers()
+            self._fill_extra_flowers()
+            b = next((b for b in self.bouquets if not b.completed and b.active), None)
+            if not b:
+                break
+            else:
+                b.active = False
 
 
 def main(argv):
