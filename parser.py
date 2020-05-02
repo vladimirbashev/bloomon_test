@@ -180,7 +180,7 @@ class Parser:
 
     def _fill_extra_flowers(self):
         for bd in self.bouquets:
-            if bd.completed:
+            if bd.completed or not bd.active or not bd.design_completed:
                 continue
             for fl in bd.flowers:
                 self._add_extra_flower(bd, fl.specie)
