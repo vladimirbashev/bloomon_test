@@ -31,16 +31,12 @@ class Bouquet:
             self.has_extra_flowers = self.total > sum(f.quantity for f in self.flowers)
 
     @property
-    def quantity(self):
-        return sum(f.quantity for f in self.flowers if f.reserved)
-
-    @property
     def completed(self):
-        return self.difference == 0
+        return self.total - sum(f.quantity for f in self.flowers if f.reserved) == 0
 
     @property
-    def difference(self):
-        return self.total - self.quantity
+    def extra_flowers_quantity(self):
+        return self.total - sum(f.quantity for f in self.flowers if f.design)
 
     def add_extra_flower(self, quantity, specie):
         fl = next((fl for fl in self.flowers if fl.specie == specie), None)
@@ -65,8 +61,23 @@ class Parser:
                 'S': 0
             }
 
+    @staticmethod
+    def _get_weight(total, quantity):
+        return 1 - (total - quantity) / total
+
     def parse(self, file_name):
-        handler = self._parse_bouquet_design
+        def _parse_bouquet_design(line):
+            self.bouquets.append(Bouquet(line))
+
+        def _parse_flower(line):
+            if line[0] not in self.flowers.keys():
+                self.flowers[line[0]] = {
+                    'L': 0,
+                    'S': 0
+                }
+            self.flowers[line[0]][line[1]] += 1
+            self.total_flowers[line[1]] += 1
+        handler = _parse_bouquet_design
         try:
             file = open(file_name, "r")
         except FileNotFoundError:
@@ -78,7 +89,7 @@ class Parser:
             if not line:
                 break
             if line == "\n":
-                handler = self._parse_flower
+                handler = _parse_flower
             else:
                 handler(line)
 
@@ -96,85 +107,7 @@ class Parser:
                 file.write('\n')
         file.close()
 
-    def _parse_bouquet_design(self, line):
-        self.bouquets.append(Bouquet(line))
-
-    def _parse_flower(self, line):
-        if line[0] not in self.flowers.keys():
-            self.flowers[line[0]] = {
-                'L': 0,
-                'S': 0
-            }
-        self.flowers[line[0]][line[1]] += 1
-        self.total_flowers[line[1]] += 1
-
-    def _find_specie(self, quantity, size):
-        return next((k for k, v in self.flowers.items() if v[size] >= quantity), None)
-
-    def _get_flowers_quantity(self, specie, size):
-        if specie in self.flowers.keys() and size in self.flowers[specie].keys():
-            return self.flowers[specie][size]
-        else:
-            return 0
-
-    def _add_extra_flower(self, bouquet, quantity, specie):
-        if quantity <= self._get_flowers_quantity(specie, bouquet.size):
-            bouquet.add_extra_flower(quantity, specie)
-            self.flowers[specie][bouquet.size] = self.flowers[specie][bouquet.size] - quantity
-
-    def _reserve_flower(self, flower, bouquet):
-        if flower.reserved:
-            return True
-        elif flower.quantity <= self._get_flowers_quantity(flower.specie, bouquet.size):
-            flower.reserved = True
-            self.flowers[flower.specie][bouquet.size] = self.flowers[flower.specie][bouquet.size] - flower.quantity
-            return True
-        else:
-            return False
-
-    def _unreserve(self, bouquet):
-        for fl in bouquet.flowers:
-            if fl.reserved:
-                fl.reserved = False
-                self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
-        bouquet.flowers = [fl for fl in bouquet.flowers if fl.reserved or fl.design]
-
-    def _fill_required_flowers(self):
-        for bd in self.bouquets:
-            if not bd.active:
-                continue
-            for fl in bd.flowers:
-                if not self._reserve_flower(fl, bd):
-                    self._unreserve(bd)
-                    break
-
-    def _fill_extra_flowers(self):
-        for bd in self.bouquets:
-            if not bd.has_extra_flowers:
-                continue
-            quantity = bd.difference
-            if quantity > 0:
-                specie = self._find_specie(quantity, bd.size)
-                if specie:
-                    self._add_extra_flower(bd, quantity, specie)
-                else:
-                    self._unreserve(bd)
-
-    def construct(self):
-        while True:
-            self._fill_required_flowers()
-            self._fill_extra_flowers()
-            b = next((b for b in self.bouquets if not b.completed and b.active), None)
-            if not b:
-                break
-            else:
-                self._unreserve(b)
-                b.active = False
-
-    def _get_weight(self, total, quantity):
-        return 1-(total-quantity)/total
-
-    def sort(self):
+    def sort_bouquets(self):
         for bd in self.bouquets:
             if bd.total > self.total_flowers[bd.size]:
                 bd.active = False
@@ -191,6 +124,69 @@ class Parser:
                 bd.weight = 0
 
         self.bouquets.sort(key=lambda b: b.weight, reverse=True)
+
+    def construct_bouquets(self):
+        while True:
+            self._fill_required_flowers()
+            self._fill_extra_flowers()
+            b = next((b for b in self.bouquets if not b.completed and b.active), None)
+            if not b:
+                break
+            else:
+                self._unreserve_flowers(b)
+                b.active = False
+
+    def _fill_required_flowers(self):
+        for bd in self.bouquets:
+            if not bd.active:
+                continue
+            for fl in bd.flowers:
+                if not self._reserve_flower(fl, bd):
+                    self._unreserve_flowers(bd)
+                    break
+
+    def _fill_extra_flowers(self):
+        def _find_specie(quantity, size):
+            return next((k for k, v in self.flowers.items() if v[size] >= quantity), None)
+
+        for bd in self.bouquets:
+            if not bd.has_extra_flowers:
+                continue
+            quantity = bd.extra_flowers_quantity
+            if quantity > 0:
+                specie = _find_specie(quantity, bd.size)
+                if specie:
+                    self._add_extra_flower(bd, quantity, specie)
+                else:
+                    self._unreserve_flowers(bd)
+
+    def _unreserve_flowers(self, bouquet):
+        for fl in bouquet.flowers:
+            if fl.reserved:
+                fl.reserved = False
+                self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
+        bouquet.flowers = [fl for fl in bouquet.flowers if fl.reserved or fl.design]
+
+    def _reserve_flower(self, flower, bouquet):
+        if flower.reserved:
+            return True
+        elif flower.quantity <= self._get_flowers_quantity(flower.specie, bouquet.size):
+            flower.reserved = True
+            self.flowers[flower.specie][bouquet.size] = self.flowers[flower.specie][bouquet.size] - flower.quantity
+            return True
+        else:
+            return False
+
+    def _get_flowers_quantity(self, specie, size):
+        if specie in self.flowers.keys() and size in self.flowers[specie].keys():
+            return self.flowers[specie][size]
+        else:
+            return 0
+
+    def _add_extra_flower(self, bouquet, quantity, specie):
+        if quantity <= self._get_flowers_quantity(specie, bouquet.size):
+            bouquet.add_extra_flower(quantity, specie)
+            self.flowers[specie][bouquet.size] = self.flowers[specie][bouquet.size] - quantity
 
 
 def main(argv):
@@ -220,9 +216,9 @@ def main(argv):
         print(str.format('Parsing {}', input_file))
         p.parse(input_file)
         print('Sort bouquets')
-        p.sort()
+        p.sort_bouquets()
         print('Construct bouquets')
-        p.construct()
+        p.construct_bouquets()
         print(str.format('Saving to {}', output_file))
         p.save(output_file)
 
