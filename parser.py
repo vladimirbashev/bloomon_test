@@ -229,7 +229,7 @@ class Parser:
             return 0
 
 
-def main(argv):
+def main():
     p = Parser()
     p.parse()
     p.sort_bouquets()
@@ -238,4 +238,4 @@ def main(argv):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()
