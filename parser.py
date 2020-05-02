@@ -1,6 +1,4 @@
-import getopt
 import re
-import sys
 from abc import ABC
 
 BOUQUET_REGEX = r'^([A-Z])([LS])(\w+[a-z])(\d+)$'
