@@ -137,6 +137,7 @@ class Parser:
                     break
 
     def print(self):
+        print('\nResult:')
         for bd in self.bouquets:
             if bd.completed:
                 print(str(bd))
