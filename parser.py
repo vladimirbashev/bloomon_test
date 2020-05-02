@@ -217,13 +217,13 @@ def main(argv):
     else:
         print('Parser is run.')
         p = Parser()
-        print(str.format('Parsing {}', input_file))
+        print(str.format('Parsing file {}', input_file))
         p.parse(input_file)
         print('Sort bouquets')
         p.sort_bouquets()
         print('Construct bouquets')
         p.construct_bouquets()
-        print(str.format('Saving to {}', output_file))
+        print(str.format('Saving to file {}', output_file))
         p.save(output_file)
 
 
