@@ -171,10 +171,10 @@ class Parser:
 
     def _fill_required_flowers(self):
         for bd in self.bouquets:
-            if not bd.active:
+            if not bd.active or bd.completed or bd.design_completed:
                 continue
             for fl in bd.flowers:
-                if not self._reserve_flower(fl, bd):
+                if not self._add_required_flower(fl, bd):
                     self._unreserve_flowers(bd)
                     break
 
@@ -203,13 +203,7 @@ class Parser:
         self.flowers[specie][bouquet.size] = self.flowers[specie][bouquet.size] - quantity
         return True
 
-    def _unreserve_flowers(self, bouquet):
-        for fl in bouquet.flowers:
-            if fl.quantity:
-                self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
-        bouquet.flowers = [fl for fl in bouquet.flowers if fl.quantity > 0 or fl.design]
-
-    def _reserve_flower(self, flower, bouquet):
+    def _add_required_flower(self, flower, bouquet):
         if flower.required_quantity == 0:
             return True
         elif flower.required_quantity <= self._get_flowers_quantity(flower.specie, bouquet.size):
@@ -219,6 +213,13 @@ class Parser:
             return True
         else:
             return False
+
+    def _unreserve_flowers(self, bouquet):
+        for fl in bouquet.flowers:
+            if fl.quantity:
+                self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
+        bouquet.flowers = [fl for fl in bouquet.flowers if fl.quantity > 0 or fl.design]
+
 
     def _get_flowers_quantity(self, specie, size):
         if specie in self.flowers.keys() and size in self.flowers[specie].keys():
