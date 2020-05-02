@@ -220,7 +220,6 @@ class Parser:
                 self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
         bouquet.flowers = [fl for fl in bouquet.flowers if fl.quantity > 0 or fl.design]
 
-
     def _get_flowers_quantity(self, specie, size):
         if specie in self.flowers.keys() and size in self.flowers[specie].keys():
             return self.flowers[specie][size]
