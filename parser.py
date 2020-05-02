@@ -146,12 +146,14 @@ class Parser:
 
     def _fill_extra_flowers(self):
         for bd in self.bouquets:
-            if bd.extra_flowers_quantity <= 0:
+            if bd.completed:
                 continue
             for fl in bd.flowers:
                 self._add_extra_flower(bd, fl.specie)
                 if bd.completed:
                     break
+            if bd.completed:
+                continue
             for specie in self.flowers.keys():
                 self._add_extra_flower(bd, specie)
                 if bd.completed:
