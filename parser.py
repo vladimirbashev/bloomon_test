@@ -1,21 +1,40 @@
 import getopt
 import re
 import sys
+from abc import ABC
 
 BOUQUET_REGEX = r'^([A-Z])([LS])(\w+[a-z])(\d+)$'
 FLOWER_REGEX = r'(\d+)([a-z])'
 
 
-class BouquetFlower:
-    def __init__(self, quantity, specie, design=False, reserved=True):
-        self.quantity = int(quantity)
+class Flower(ABC):
+    def __init__(self, specie, design_quantity=0, quantity=0):
         self.specie = specie
-        self.reserved = reserved
-        self.design = design
         self.weight = 0
+        self.design_quantity = int(design_quantity)
+        self.quantity = int(quantity)
+
+    @property
+    def design(self):
+        return self.design_quantity > 0
+
+    @property
+    def required_quantity(self):
+        result = self.design_quantity - self.quantity
+        return result if result > 0 else 0
 
     def __str__(self):
         return str.format('{}{}', self.quantity, self.specie)
+
+
+class BouquetFlower(Flower):
+    def __init__(self, design_quantity, specie):
+        super(BouquetFlower, self).__init__(specie, design_quantity=design_quantity)
+
+
+class ExtraFlower(Flower):
+    def __init__(self, quantity, specie):
+        super(ExtraFlower, self).__init__(specie, quantity=quantity)
 
 
 class Bouquet:
@@ -26,7 +45,7 @@ class Bouquet:
         if groups:
             self.name, self.size, flowers, self.total = groups[0]
             self.total = int(self.total)
-            self.flowers = list(map(lambda f: BouquetFlower(*f, design=True, reserved=False),
+            self.flowers = list(map(lambda f: BouquetFlower(*f),
                                     re.findall(FLOWER_REGEX, flowers)))
 
     @property
@@ -35,14 +54,14 @@ class Bouquet:
 
     @property
     def extra_flowers_quantity(self):
-        return self.total - sum(f.quantity for f in self.flowers if f.reserved)
+        return self.total - sum(f.quantity for f in self.flowers)
 
     def add_extra_flower(self, quantity, specie):
         fl = next((fl for fl in self.flowers if fl.specie == specie), None)
         if fl:
             fl.quantity = fl.quantity + quantity
         else:
-            self.flowers.append(BouquetFlower(quantity, specie))
+            self.flowers.append(ExtraFlower(quantity, specie))
 
     def __str__(self):
         return str.format('{}{}{}',
@@ -112,10 +131,10 @@ class Parser:
                 bd.active = False
             else:
                 for f in bd.flowers:
-                    if f.quantity > self._get_flowers_quantity(f.specie, bd.size):
+                    if f.design_quantity > self._get_flowers_quantity(f.specie, bd.size):
                         bd.active = False
                         break
-                    f.weight = self._get_weight(self._get_flowers_quantity(f.specie, bd.size), f.quantity)
+                    f.weight = self._get_weight(self._get_flowers_quantity(f.specie, bd.size), f.design_quantity)
             if bd.active:
                 bd.weight = sum(f.weight for f in bd.flowers if f.design) + \
                             self._get_weight(self.total_flowers[bd.size], bd.total)
@@ -154,7 +173,7 @@ class Parser:
                     break
             if bd.completed:
                 continue
-            for specie in self.flowers.keys():
+            for specie in list(self.flowers.keys()):
                 self._add_extra_flower(bd, specie)
                 if bd.completed:
                     break
@@ -171,17 +190,17 @@ class Parser:
 
     def _unreserve_flowers(self, bouquet):
         for fl in bouquet.flowers:
-            if fl.reserved:
-                fl.reserved = False
+            if fl.quantity:
                 self.flowers[fl.specie][bouquet.size] = self.flowers[fl.specie][bouquet.size] + fl.quantity
-        bouquet.flowers = [fl for fl in bouquet.flowers if fl.reserved or fl.design]
+        bouquet.flowers = [fl for fl in bouquet.flowers if fl.quantity > 0 or fl.design]
 
     def _reserve_flower(self, flower, bouquet):
-        if flower.reserved:
+        if flower.required_quantity == 0:
             return True
-        elif flower.quantity <= self._get_flowers_quantity(flower.specie, bouquet.size):
-            flower.reserved = True
-            self.flowers[flower.specie][bouquet.size] = self.flowers[flower.specie][bouquet.size] - flower.quantity
+        elif flower.required_quantity <= self._get_flowers_quantity(flower.specie, bouquet.size):
+            rq = flower.required_quantity
+            flower.quantity = flower.quantity + rq
+            self.flowers[flower.specie][bouquet.size] = self.flowers[flower.specie][bouquet.size] - rq
             return True
         else:
             return False
