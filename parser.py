@@ -50,11 +50,15 @@ class Bouquet:
 
     @property
     def completed(self):
-        return self.extra_flowers_quantity == 0
+        return self.design_completed and sum(f.quantity for f in self.flowers) == self.total
+
+    @property
+    def design_completed(self):
+        return all(f.design_quantity <= f.quantity for f in self.flowers)
 
     @property
     def extra_flowers_quantity(self):
-        return self.total - sum(f.quantity for f in self.flowers)
+        return self.total - sum(f.design_quantity for f in self.flowers)
 
     def add_extra_flower(self, quantity, specie):
         fl = next((fl for fl in self.flowers if fl.specie == specie), None)
@@ -83,47 +87,59 @@ class Parser:
     def _get_weight(total, quantity):
         return 1 - (total - quantity) / total
 
-    def parse(self, file_name):
-        def _parse_bouquet_design(line):
-            self.bouquets.append(Bouquet(line))
+    def _fill_test_data(self):
+        self._parse_bouquet_design('AL10a15b5c30')
+        self._parse_bouquet_design('AS10a10b25')
+        self._parse_bouquet_design('BL15b1c21')
+        self._parse_bouquet_design('BS10b5c16')
+        self._parse_bouquet_design('CL20a15c45')
+        self._parse_bouquet_design('DL20b28')
+        for i in range(15):
+            self._parse_flower('aL')
+            self._parse_flower('bL')
+            self._parse_flower('cL')
+            self._parse_flower('aS')
+            self._parse_flower('bS')
+            self._parse_flower('cS')
 
-        def _parse_flower(line):
-            if line[0] not in self.flowers.keys():
-                self.flowers[line[0]] = {
-                    'L': 0,
-                    'S': 0
-                }
-            self.flowers[line[0]][line[1]] += 1
-            self.total_flowers[line[1]] += 1
-        handler = _parse_bouquet_design
-        try:
-            file = open(file_name, "r")
-        except FileNotFoundError:
-            print(str.format('File {} not found', file_name))
-            raise
+    def _parse_bouquet_design(self, line):
+        self.bouquets.append(Bouquet(line))
 
-        while True:
-            line = file.readline()
-            if not line:
-                break
-            if line == "\n":
-                handler = _parse_flower
-            else:
-                handler(line)
+    def _parse_flower(self, line):
+        if line[0] not in self.flowers.keys():
+            self.flowers[line[0]] = {
+                'L': 0,
+                'S': 0
+            }
+        self.flowers[line[0]][line[1]] += 1
+        self.total_flowers[line[1]] += 1
 
-        file.close()
+    def parse(self):
+        print('Use test data (Y/N):')
+        line = input()
+        if line.lower() == 'y':
+            self._fill_test_data()
+        else:
+            print('Please enter bouquet designs:')
+            while True:
+                line = input()
+                if line:
+                    self._parse_bouquet_design(line)
+                else:
+                    break
 
-    def save(self, file_name):
-        try:
-            file = open(file_name, 'w')
-        except FileNotFoundError:
-            print(str.format('Cannot save file {}', file_name))
-            raise
+            print('Please enter flowers:')
+            while True:
+                line = input()
+                if line:
+                    self._parse_flower(line)
+                else:
+                    break
+
+    def print(self):
         for bd in self.bouquets:
             if bd.completed:
-                file.write(str(bd))
-                file.write('\n')
-        file.close()
+                print(str(bd))
 
     def sort_bouquets(self):
         for bd in self.bouquets:
@@ -213,37 +229,11 @@ class Parser:
 
 
 def main(argv):
-    input_file = ''
-    output_file = ''
-    try:
-        opts, args = getopt.getopt(argv, "hi:o:", ["ifile=", "ofile="])
-    except getopt.GetoptError:
-        print('Incorrect parameters')
-        sys.exit(2)
-    for opt, arg in opts:
-        if opt == '-h':
-            print('parser.py -i <inputfile> -o <outputfile>')
-            sys.exit()
-        elif opt in ('-i', '--ifile'):
-            input_file = arg
-        elif opt in ('-o', '--ofile'):
-            output_file = arg
-
-    if not input_file:
-        print('Please specify input file name: -i <inputfile>.')
-    elif not output_file:
-        print('Please specify output file name: -0 <outputfile>.')
-    else:
-        print('Parser is run.')
-        p = Parser()
-        print(str.format('Parsing file {}', input_file))
-        p.parse(input_file)
-        print('Sort bouquets')
-        p.sort_bouquets()
-        print('Construct bouquets')
-        p.construct_bouquets()
-        print(str.format('Saving to file {}', output_file))
-        p.save(output_file)
+    p = Parser()
+    p.parse()
+    p.sort_bouquets()
+    p.construct_bouquets()
+    p.print()
 
 
 if __name__ == '__main__':
