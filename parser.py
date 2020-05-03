@@ -44,8 +44,7 @@ class Bouquet:
         if groups:
             self.name, self.size, flowers, self.total = groups[0]
             self.total = int(self.total)
-            self.flowers = list(map(lambda f: BouquetFlower(*f),
-                                    re.findall(FLOWER_REGEX, flowers)))
+            self.flowers = list(map(lambda f: BouquetFlower(*f), re.findall(FLOWER_REGEX, flowers)))
 
     @property
     def completed(self):
