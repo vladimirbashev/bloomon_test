@@ -1,3 +1,4 @@
+import click
 import re
 from abc import ABC
 
@@ -112,10 +113,8 @@ class Parser:
         self.flowers[line[0]][line[1]] += 1
         self.total_flowers[line[1]] += 1
 
-    def parse(self):
-        print('Use test data (Y/N):')
-        line = input()
-        if line.lower() == 'y':
+    def parse(self, test):
+        if test.lower() == 'y':
             self._fill_test_data()
         else:
             print('Please enter bouquet designs:')
@@ -227,9 +226,11 @@ class Parser:
             return 0
 
 
-def main():
+@click.command()
+@click.option('--test', default='n', help='Using test data')
+def main(test):
     p = Parser()
-    p.parse()
+    p.parse(test)
     p.sort_bouquets()
     p.construct_bouquets()
     p.print()
