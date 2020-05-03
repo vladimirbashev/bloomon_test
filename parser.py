@@ -113,8 +113,8 @@ class Parser:
         self.flowers[line[0]][line[1]] += 1
         self.total_flowers[line[1]] += 1
 
-    def parse(self, test):
-        if test.lower() == 'y':
+    def parse(self, is_test):
+        if is_test:
             self._fill_test_data()
         else:
             print('Please enter bouquet designs:')
@@ -230,7 +230,7 @@ class Parser:
 @click.option('--test', default='n', help='Using test data')
 def main(test):
     p = Parser()
-    p.parse(test)
+    p.parse(test.lower() == 'y')
     p.sort_bouquets()
     p.construct_bouquets()
     p.print()
