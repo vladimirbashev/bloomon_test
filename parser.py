@@ -92,7 +92,7 @@ class Parser:
         self._parse_bouquet_design('BS10b5c16')
         self._parse_bouquet_design('CL20a15c45')
         self._parse_bouquet_design('DL20b28')
-        for i in range(15):
+        for i in range(10):
             self._parse_flower('aL')
             self._parse_flower('bL')
             self._parse_flower('cL')
@@ -188,7 +188,7 @@ class Parser:
                     break
             if bd.completed:
                 continue
-            for specie in list(self.flowers.keys()):
+            for specie in self.flowers:
                 self._add_extra_flower(bd, specie)
                 if bd.completed:
                     break
