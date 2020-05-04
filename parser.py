@@ -136,7 +136,7 @@ class Parser:
 
     def parse(self, is_test):
         """Method implements data input or test data usage(based on input parameter).
-        Data is stored on self.flowers and self.bouquets structures."""
+        Data is stored in self.flowers and self.bouquets structures."""
         if is_test:
             self._fill_test_data()
         else:
