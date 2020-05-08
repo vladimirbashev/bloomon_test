@@ -177,7 +177,7 @@ class Parser:
         to free flowers for other uncompleted bouquets"""
 
         while True:
-            """Adds design flowers to bouquets"""
+            # Adds design flowers to bouquets
             bouquets = list()
             for bd in self.bouquets:
                 if not bd.design_completed:
@@ -192,7 +192,7 @@ class Parser:
             self.bouquets = bouquets
             bouquets = list()
 
-            """Adds non design flowers to bouquets"""
+            # Adds non design flowers to bouquets
             for bd in self.bouquets:
                 for fl in bd.flowers:
                     self._add_extra_flower(bd, fl.specie)
