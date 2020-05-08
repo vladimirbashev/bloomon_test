@@ -1,3 +1,5 @@
+import copy
+
 import click
 import re
 from abc import ABC
@@ -49,7 +51,6 @@ class Bouquet:
     """Creates a bouquet design, also used to construct bouquets"""
 
     def __init__(self, val):
-        self.active = True  # bouquet is deactivated if cannot be completed
         self.bouquet_design = val
         groups = re.findall(BOUQUET_REGEX, val)
         if groups:
@@ -112,7 +113,7 @@ class Parser:
         self._parse_bouquet_design('BS10b5c16')
         self._parse_bouquet_design('CL20a15c45')
         self._parse_bouquet_design('DL20b28')
-        for i in range(10):
+        for i in range(20):
             self._parse_flower('aL')
             self._parse_flower('bL')
             self._parse_flower('cL')
@@ -156,72 +157,63 @@ class Parser:
                 else:
                     break
 
-    def print(self):
-        """Prints completed bouquets"""
-        print('\nResult:')
-        for bd in self.bouquets:
-            if bd.completed:
-                print(str(bd))
-
     def sort_bouquets(self):
         """Method sorts bouquet designs based on bouquets weight.
         Weights reflects bouquet complexity, in other words big bouquets with rare flowers should be prepared first."""
+        bouquets = list()
         for bd in self.bouquets:
-            if bd.total > self.total_flowers[bd.size]:
-                bd.active = False
-            else:
+            if bd.total < self.total_flowers[bd.size]:
                 for f in bd.flowers:
-                    if f.design_quantity > self._get_flowers_quantity(f.specie, bd.size):
-                        bd.active = False
-                        break
                     f.weight = self._get_weight(self._get_flowers_quantity(f.specie, bd.size), f.design_quantity)
-            if bd.active:
+
                 bd.weight = sum(f.weight for f in bd.flowers if f.design) + \
                             self._get_weight(self.total_flowers[bd.size], bd.total)
-            else:
-                bd.weight = 0
-
-        self.bouquets.sort(key=lambda b: b.weight, reverse=True)
+                bouquets.append(bd)
+        self.bouquets = sorted(bouquets, key=lambda b: b.weight, reverse=True)
 
     def construct_bouquets(self):
         """Method constructs bouquets based on designs.
         It is done in infinite loop. A one uncompleted bouquet is excluded from logic on each loop
         to free flowers for other uncompleted bouquets"""
+
         while True:
-            self._fill_required_flowers()
-            self._fill_extra_flowers()
-            b = next((b for b in self.bouquets if not b.completed and b.active), None)
-            if not b:
-                break
+            """Adds design flowers to bouquets"""
+            bouquets = list()
+            for bd in self.bouquets:
+                if not bd.design_completed:
+                    for fl in bd.flowers:
+                        if not self._add_required_flower(fl, bd):
+                            self._unreserve_flowers(bd)
+                            break
+                if bd.completed:
+                    yield bd
+                else:
+                    bouquets.append(bd)
+            self.bouquets = bouquets
+            bouquets = list()
+
+            """Adds non design flowers to bouquets"""
+            for bd in self.bouquets:
+                for fl in bd.flowers:
+                    self._add_extra_flower(bd, fl.specie)
+                    if bd.completed:
+                        break
+                if bd.completed:
+                    yield bd
+                else:
+                    for specie in self.flowers:
+                        self._add_extra_flower(bd, specie)
+                        if bd.completed:
+                            break
+                    if bd.completed:
+                        yield bd
+                    else:
+                        bouquets.append(bd)
+            if len(bouquets) > 0:
+                self._unreserve_flowers(bouquets[0])
+                self.bouquets = bouquets[1:]
             else:
-                self._unreserve_flowers(b)
-                b.active = False
-
-    def _fill_required_flowers(self):
-        """Adds design flowers to bouquets"""
-        for bd in self.bouquets:
-            if not bd.active or bd.completed or bd.design_completed:
-                continue
-            for fl in bd.flowers:
-                if not self._add_required_flower(fl, bd):
-                    self._unreserve_flowers(bd)
-                    break
-
-    def _fill_extra_flowers(self):
-        """Adds non design flowers to bouquets"""
-        for bd in self.bouquets:
-            if bd.completed or not bd.active or not bd.design_completed:
-                continue
-            for fl in bd.flowers:
-                self._add_extra_flower(bd, fl.specie)
-                if bd.completed:
-                    break
-            if bd.completed:
-                continue
-            for specie in self.flowers:
-                self._add_extra_flower(bd, specie)
-                if bd.completed:
-                    break
+                break
 
     def _add_extra_flower(self, bouquet, specie):
         """Add a non design flower to a bouquet"""
@@ -267,8 +259,8 @@ def main(test):
     p = Parser()
     p.parse(test.lower() == 'y')
     p.sort_bouquets()
-    p.construct_bouquets()
-    p.print()
+    for bd in p.construct_bouquets():
+        print(bd)
 
 
 if __name__ == '__main__':
